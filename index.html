@@ -1,1 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Free Real-Time Safety Dashboard + SOS</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root { --bg:#0b1220; --card:#121a2b; --muted:#9fb0d3; --accent:#79c0ff; --ok:#89f0a2; --warn:#ffd36b; --bad:#ff8a8a; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; background:var(--bg); color:#e9f1ff; }
+    header { padding:18px 16px; border-bottom:1px solid rgba(255,255,255,.06); position:sticky; top:0; backdrop-filter: blur(6px); background:rgba(11,18,32,.7); }
+    h1 { margin:0; font-weight:700; font-size:20px; letter-spacing:.2px; }
+    main { max-width:1100px; margin:16px auto 80px; padding:0 16px; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 8px; }
+    button { background:var(--card); border:1px solid rgba(255,255,255,.08); color:#e9f1ff; padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:600; }
+    button:hover { border-color: rgba(121,192,255,.6); }
+    .sos { background:var(--bad); color:white; font-size:15px; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap:14px; }
+    .card { background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:14px; }
+    .card h2 { margin:0 0 8px; font-size:16px; letter-spacing:.2px; }
+    .meta { color:var(--muted); font-size:13px; }
+    ul { margin:6px 0 0; padding-left:18px; }
+    li { margin:4px 0; }
+    a { color:var(--accent); text-decoration:none; }
+    a:hover { text-decoration:underline; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; margin-left:6px; border:1px solid rgba(255,255,255,.14); }
+    .ok { color:var(--ok); }
+    .warn { color:var(--warn); }
+    .bad { color:var(--bad); }
+    .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .small { font-size:12px; color:var(--muted); }
+    .sp { height:8px; }
+    .error { color:var(--bad); }
+    .muted { color:var(--muted); }
+    .kpi { font-size:22px; font-weight:700; }
+    .list-two-col { column-count:2; column-gap:18px; }
+    @media (max-width:560px){ .list-two-col{ column-count:1; } }
+    footer { text-align:center; color:var(--muted); font-size:12px; padding:24px 0 40px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🌍 Free Real-Time Safety Dashboard</h1>
+    <div class="actions">
+      <button id="btnGo">📡 Get My Situation</button>
+      <button id="btnRefresh" title="Re-run queries with last known location">🔁 Refresh</button>
+      <button id="btnSOS" class="sos">🚨 SOS</button>
+    </div>
+    <div id="coords" class="small mono muted"></div>
+  </header>
 
+  <main>
+    <div class="grid">
+      <section class="card" id="cardAddress">
+        <h2>🏠 Address <span id="addrStatus" class="pill muted">idle</span></h2>
+        <div id="address">—</div>
+        <div id="admin" class="small muted"></div>
+      </section>
+
+      <section class="card" id="cardWeather">
+        <h2>🌦️ Weather <span id="wxStatus" class="pill muted">idle</span></h2>
+        <div class="row">
+          <div>Temp: <span id="temp" class="kpi">—</span>°C</div>
+          <div>Wind: <span id="wind" class="kpi">—</span> km/h</div>
+        </div>
+        <div class="small muted">Code: <span id="wcode">—</span> • Time: <span id="wtime">—</span></div>
+      </section>
+
+      <section class="card" id="cardPolice">
+        <h2>🚓 Nearby Police <span id="polStatus" class="pill muted">idle</span></h2>
+        <ul id="policeList" class="list-two-col"></ul>
+      </section>
+
+      <section class="card" id="cardHosp">
+        <h2>🏥 Hospitals <span id="hospStatus" class="pill muted">idle</span></h2>
+        <ul id="hospList" class="list-two-col"></ul>
+      </section>
+
+      <section class="card" id="cardFire">
+        <h2>🚒 Fire Stations <span id="fireStatus" class="pill muted">idle</span></h2>
+        <ul id="fireList" class="list-two-col"></ul>
+      </section>
+
+      <section class="card" id="cardRestricted">
+        <h2>🪖 Restricted / Military / Border Control <span id="milStatus" class="pill muted">idle</span></h2>
+        <ul id="milList" class="list-two-col"></ul>
+        <div class="small muted">Note: based on OpenStreetMap tags like <code>landuse=military</code>, <code>military=*</code>, <code>barrier=border_control</code>.</div>
+      </section>
+
+      <section class="card" id="cardGDACS">
+        <h2>⚠️ Disaster Alerts (GDACS) <span id="gdacsStatus" class="pill muted">idle</span></h2>
+        <div class="small muted">Filtered by distance to you.</div>
+        <ul id="gdacsList"></ul>
+      </section>
+
+      <section class="card" id="cardRelief">
+        <h2>📰 Security / Terrorism Reports (ReliefWeb) <span id="reliefStatus" class="pill muted">idle</span></h2>
+        <ul id="reliefList"></ul>
+      </section>
+    </div>
+
+    <div class="sp"></div>
+    <section class="card">
+      <h2>ℹ️ Notes</h2>
+      <ul class="small">
+        <li>All data sources are free: HTML5 Geolocation, OpenStreetMap (Nominatim + Overpass), Open-Meteo, GDACS RSS, ReliefWeb API.</li>
+        <li>Nominatim & Overpass are community resources — please don’t spam; we rate-limit calls and use small radii.</li>
+        <li>GDACS RSS sometimes blocks cross-origin requests. This app will fall back to a free CORS proxy (<code>allorigins</code>) automatically.</li>
+        <li>“Recent crimes” are not available via global free APIs. If your city/state police publish open data, you can plug that JSON feed into this page.</li>
+        <li>SOS shows your location, address, and nearest police contact with a Google Maps link.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>Built with only free/open endpoints. No API keys.</footer>
+
+  <script>
+    const $ = sel => document.querySelector(sel);
+    const setStatus = (id, text, cls='muted') => { const el=document.getElementById(id); el.textContent=text; el.className='pill '+cls; };
+    const haversineKm = (lat1,lon1,lat2,lon2)=>{const R=6371;const dLat=(lat2-lat1)*Math.PI/180;const dLon=(lon2-lon1)*Math.PI/180;const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));};
+    const fmt=(v,def='—')=>(v===undefined||v===null||v==='')?def:v;
+
+    let LAST={lat:null,lon:null,country:null,city:null,address:null,nearestPolice:null};
+
+    async function getPosition(){return new Promise((res,rej)=>{if(!navigator.geolocation)return rej(new Error("Geolocation not supported"));navigator.geolocation.getCurrentPosition(p=>res(p),err=>rej(err),{enableHighAccuracy:true,timeout:15000,maximumAge:0});});}
+
+    async function fetchAddress(lat,lon){setStatus('addrStatus','loading…');const url=`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;const r=await fetch(url,{headers:{'Accept':'application/json'}});if(!r.ok)throw new Error('Nominatim error');const d=await r.json();$('#address').textContent=d.display_name||'Unknown address';const a=d.address||{};$('#admin').textContent=[a.suburb,a.city||a.town||a.village||a.hamlet,a.state,a.postcode,a.country].filter(Boolean).join(' • ');LAST.country=a.country;LAST.city=a.city||a.town||a.village||a.hamlet||null;LAST.address=d.display_name||null;setStatus('addrStatus','ok','ok');}
+
+    async function fetchWeather(lat,lon){setStatus('wxStatus','loading…');const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);if(!r.ok)throw new Error('Open-Meteo error');const d=await r.json();const c=d.current_weather||{};$('#temp').textContent=fmt(c.temperature);$('#wind').textContent=fmt(c.windspeed);$('#wcode').textContent=fmt(c.weathercode);$('#wtime').textContent=fmt(c.time);setStatus('wxStatus','ok','ok');}
+
+    async function overpass(query){const r=await fetch("https://overpass-api.de/api/interpreter",{method:"POST",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:query});if(!r.ok)throw new Error('Overpass error');return r.json();}
+
+    function renderPOIs(containerId,elements,lat,lon,labelFallback){const ul=document.getElementById(containerId);if(!elements||!elements.length){ul.innerHTML='<li class="muted">None found in radius.</li>';return;}const items=elements.map((e,i)=>{const n=(e.tags&&(e.tags.name||e.tags['name:en']))||labelFallback;const elat=e.lat||(e.center&&e.center.lat);const elon=e.lon||(e.center&&e.center.lon);const dist=(elat&&elon)?haversineKm(lat,lon,elat,elon).toFixed(2):null;const maps=(elat&&elon)?`https://maps.google.com/?q=${elat},${elon}`:null;if(containerId==='policeList'&&i===0){LAST.nearestPolice={name:n,lat:elat,lon:elon,dist:dist};}return `<li>${n}${dist?` • <span class="mono small">${dist} km</span>`:''}${maps?` • <a href="${maps}" target="_blank">map</a>`:''}</li>`;});ul.innerHTML=items.join('');}
+
+    async function fetchPOIs(lat,lon,radius=5000){radius=Math.min(Math.max(radius,1000),10000);
+      try{setStatus('polStatus','loading…');const q=`[out:json][timeout:25];nwr[amenity=police](around:${radius},${lat},${lon});out center 20;`;const d=await overpass(q);renderPOIs('policeList',d.elements,lat,lon,'Police Station');setStatus('polStatus','ok','ok');}catch(e){setStatus('polStatus','error','bad');$('#policeList').innerHTML=`<li class="error">${e.message}</li>`;}
+      try{setStatus('hospStatus','loading…');const q=`[out:json][timeout:25];nwr[amenity=hospital](around:${radius},${lat},${lon});out center 20;`;const d=await overpass(q);renderPOIs('hospList',d.elements,lat,lon,'Hospital');setStatus('hospStatus','ok','ok');}catch(e){setStatus('hospStatus','error','bad');$('#hospList').innerHTML=`<li class="error">${e.message}</li>`;}
+      try{setStatus('fireStatus','loading…');const q=`[out:json][timeout:25];nwr[amenity=fire_station](around:${radius},${lat},${lon});out center 20;`;const d=await overpass(q);renderPOIs('fireList',d.elements,lat,lon,'Fire Station');setStatus('fireStatus','ok','ok');}catch(e){setStatus('fireStatus','error','bad');$('#fireList').innerHTML=`<li class="error">${e.message}</li>`;}
+      try{setStatus('milStatus','loading…');const q=`[out:json][timeout:30];(nwr[landuse=military](around:${radius},${lat},${lon});nwr[military](around:${radius},${lat},${lon});nwr[barrier=border_control](around:${radius},${lat},${lon});nwr[access=military](around:${radius},${lat},${lon});nwr[military:restriction](around:${radius},${lat},${lon}););out center 40;`;const d=await overpass(q);renderPOIs('milList',d.elements,lat,lon,'Restricted Area');setStatus('milStatus','ok','ok');}catch(e){setStatus('milStatus','error','bad');$('#milList').innerHTML=`<li class="error">${e.message}</li>`;}}
+    
+    async function fetchGDACS(lat,lon,withinKm=800){setStatus('gdacsStatus','loading…');const tryFetch=async(url)=>{const r=await fetch(url);if(!r.ok)throw new Error('GDACS fetch failed');return r.text();};let xml;try{xml=await tryFetch('https://www.gdacs.org/rss.aspx');}catch{xml=await tryFetch('https://api.allorigins.win/raw?url='+encodeURIComponent('https://www.gdacs.org/rss.aspx'));}const doc=new DOMParser().parseFromString(xml,"text/xml");const items=[...doc.getElementsByTagName('item')];const out=[];for(const it of items.slice(0,30)){const title=it.getElementsByTagName('title')[0]?.textContent||'Alert';const link=it.getElementsByTagName('link')[0]?.textContent||'#';const latN=parseFloat(it.getElementsByTagName('geo:lat')[0]?.textContent||it.getElementsByTagName('lat')[0]?.textContent||'NaN');const lonN=parseFloat(it.getElementsByTagName('geo:long')[0]?.textContent||it.getElementsByTagName('long')[0]?.textContent||'NaN');let distStr='—';let include=true;if(!Number.isNaN(latN)&&!Number.isNaN(lonN)){const d=haversineKm(lat,lon,latN,lonN);distStr=d.toFixed(0)+' km';include=d<=withinKm;}else include=false;if(include) out.push(`<li><a target="_blank" href="${link}">${title}</a> • <span class="mono small">${distStr}</span></li>`);}$('#gdacsList').innerHTML=out.length?out.join(''):'<li class="muted">No nearby GDACS alerts.</li>';setStatus('gdacsStatus','ok','ok');}
+
+    async function fetchRelief(countryHint=null,limit=8){setStatus('reliefStatus','loading…');const q=encodeURIComponent(countryHint?`security OR terrorism ${countryHint}`:`security OR terrorism`);const url=`https://api.reliefweb.int/v1/reports?appname=free-safety-app&query[value]=${q}&limit=${limit}&profile=full`;try{const r=await fetch(url);if(!r.ok)throw new Error('ReliefWeb error');const d=await r.json();const items=(d.data||[]).map(f=>{const t=f.fields?.title||'Report';const l=f.fields?.url||'#';const s=f.fields?.source?.map(x=>x.shortname||x.name).join(', ');const dte=f.fields?.date?.original||f.fields?.date?.created||'';return `<li><a target="_blank" href="${l}">${t}</a>${s?` • <span class="small muted">${s}</span>`:''}${dte?` • <span class="small mono">${dte.slice(0,10)}</span>`:''}</li>`;});$('#reliefList').innerHTML=items.length?items.join(''):'<li class="muted">No recent reports found.</li>';setStatus('reliefStatus','ok','ok');}catch(e){$('#reliefList').innerHTML=`<li class="error">${e.message}</li>`;setStatus('reliefStatus','error','bad');}}
+
+    async function runAll(lat,lon){LAST.lat=lat;LAST.lon=lon;$('#coords').textContent=`Lat ${lat.toFixed(6)}, Lon ${lon.toFixed(6)}`;await Promise.allSettled([fetchAddress(lat,lon),fetchWeather(lat,lon)]);await fetchPOIs(lat,lon,5000);await Promise.allSettled([fetchGDACS(lat,lon,800),fetchRelief(LAST.country||LAST.city||null,8)]);}
+
+    document.getElementById('btnGo').addEventListener('click',async()=>{try{const p=await getPosition();await runAll(p.coords.latitude,p.coords.longitude);}catch(e){alert('Location error: '+e.message);}});
+    document.getElementById('btnRefresh').addEventListener('click',async()=>{if(LAST.lat&&LAST.lon){await runAll(LAST.lat,LAST.lon);}else alert('No known location yet. Click “Get My Situation” first.');});
+
+    document.getElementById('btnSOS').addEventListener('click',()=>{if(!LAST.lat||!LAST.lon){alert("Location not yet available. Please click 'Get My Situation' first.");return;}let msg=`🚨 SOS ALERT 🚨\nLocation: ${LAST.lat}, ${LAST.lon}\nAddress: ${LAST.address||'Unknown'}\n`;if(LAST.nearestPolice){msg+=`Nearest Police: ${LAST.nearestPolice.name} (${LAST.nearestPolice.dist} km)\nMap: https://maps.google.com/?q=${LAST.nearestPolice.lat},${LAST.nearestPolice.lon}`;}else{msg+='Nearest Police: Not found\n';}msg+=`\nOpen Map: https://maps.google.com/?q=${LAST.lat},${LAST.lon}`;alert(msg);});
+  </script>
+</body>
+</html>
