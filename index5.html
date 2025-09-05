@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Free Real-Time Safety Dashboard — Crime Layer</title>
+
+
+<!-- Leaflet + plugins (CDN, free) -->
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+</head>
+<body>
+
+<header>
+  <div style="display:flex;gap:12px;align-items:center;">
+    <h1>🌍 Free Real-Time Safety Dashboard</h1>
+    <div class="small muted mono" id="coords">Lat —, Lon —</div>
+  </div>
+
+  <div class="actions" style="align-items:center;">
+    <button id="btnRefresh" title="Refresh data for last-known location">🔁 Refresh</button>
+    <button id="btnSOS" class="sos">🚨 SOS</button>
+  </div>
+</header>
+
+<!-- MAP first, then the rest of UI (keeps design/layout) -->
+<div id="mapwrap">
+  <div id="map"></div>
+</div>
+
+<main>
+  <div class="grid">
+    <section class="card" id="cardAddress">
+      <h2>🏠 Address <span id="addrStatus" class="pill muted">idle</span></h2>
+      <div id="address">—</div>
+      <div id="admin" class="small muted"></div>
+    </section>
+
+    <section class="card" id="cardRecentCrimes">
+      <h2>🔎 Recent nearby crimes (10 km) <span id="crimeStatus" class="pill muted">idle</span></h2>
+      <div id="crimeContent"><div class="small muted">No data yet.</div></div>
+      <div class="small muted" style="margin-top:8px; color: rgb(250, 250, 131);">⚠︎ These info are not to make you afraid, these are for making you aware.</div>
+    </section>
+
+    <section class="card" id="cardWeather">
+      <h2>🌦️ Weather <span id="wxStatus" class="pill muted">idle</span></h2>
+      <div class="row">
+        <div>Temp: <span id="temp" class="kpi">—</span>°C</div>
+        <div>Wind: <span id="wind" class="kpi">—</span> km/h</div>
+      </div>
+      <div class="small muted">Code: <span id="wcode">—</span> • Time: <span id="wtime">—</span></div>
+    </section>
+
+    <section class="tourist-section">
+      <h2>🌍 Nearby Tourist Places</h2>
+      <button id="loadTouristBtn">Find Tourist Places</button>
+      <div id="touristResults"></div>
+    </section>
+
+    <!-- keep all other cards you had earlier -->
+    <section class="card" id="cardPolice">
+      <h2>🚓 Nearby Police <span id="polStatus" class="pill muted">idle</span></h2>
+      <ul id="policeList" class="list-two-col"></ul>
+    </section>
+
+    <section class="card" id="cardHosp">
+      <h2>🏥 Hospitals <span id="hospStatus" class="pill muted">idle</span></h2>
+      <ul id="hospList" class="list-two-col"></ul>
+    </section>
+
+    <section class="card" id="cardFire">
+      <h2>🚒 Fire Stations <span id="fireStatus" class="pill muted">idle</span></h2>
+      <ul id="fireList" class="list-two-col"></ul>
+    </section>
+
+    <section class="card" id="cardRestricted">
+      <h2>🪖 Restricted / Military <span id="milStatus" class="pill muted">idle</span></h2>
+      <ul id="milList" class="list-two-col"></ul>
+    </section>
+
+    <section class="card" id="cardGDACS">
+      <h2>⚠️ Disaster Alerts (GDACS) <span id="gdacsStatus" class="pill muted">idle</span></h2>
+      <ul id="gdacsList"></ul>
+    </section>
+
+    <section class="card" id="cardRelief">
+      <h2>📰 Security / Terrorism Reports (ReliefWeb) <span id="reliefStatus" class="pill muted">idle</span></h2>
+      <ul id="reliefList"></ul>
+    </section>
+  </div>
+
+  <div class="sp"></div>
+  <section class="card">
+    <h2>ℹ️ Notes & data sources</h2>
+    <ul class="small">
+      <li>Data sources used: OpenStreetMap (Nominatim + Overpass), Open-Meteo, GDACS RSS, ReliefWeb API, Chicago/LA/NY city open-data APIs, data.gov.in (India aggregated). These are all free/open endpoints. </li>
+      <li>If a city publishes incident-level crime data with coordinates (Chicago/LA/NY), the map will show points. If only aggregated datasets exist for your region (many India datasets), the app will show a table instead.</li>
+      <li>This page polls location when you move (≥1 meter). For accuracy and battery reasons, mobile may provide limited precision.</li>
+    </ul>
+  </section>
+</main>
+
+<footer>Built with free/open endpoints • No API keys required for the core flows</footer>
+<script type="text/javascript" src="script.js"></script>
+</body>
+</html>
